@@ -1,7 +1,7 @@
-LLVM_CONFIG=llvm-config-3.5
-CXXFLAGS=`$(LLVM_CONFIG) --cxxflags`
+LLVM_CONFIG=llvm-config-3.4
+CXXFLAGS=-std=c++11 `$(LLVM_CONFIG) --cxxflags`
 LDFLAGS=`$(LLVM_CONFIG) --ldflags`
-LDLIBS=`$(LLVM_CONFIG) --libs core --system-libs`
+LDLIBS=`$(LLVM_CONFIG) --libs core` -lz -lpthread -lffi  -ltinfo -lrt -ldl -lm
 
 assembly:assembly.cpp semantic.cpp libmylang.a
 
