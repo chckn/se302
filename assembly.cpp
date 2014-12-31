@@ -1,27 +1,5 @@
 #include "assembly.h"
 
-Value* NUMCG(Expnode* node, CodeContext& context){
-	int value = node->integer;
-	return ConstantInt::get(Type::getInt64Ty(getGlobalContext()),value, true);
-}
-
-Value* assignmentCG(Expnode* node, CodeContext& context){
-	vector<Node*> zip;                                            
-        unrolling(node, zip);
-	Value* Val = ((Expnode*)zip[2])->codeGen(context);
-	Value* Ptr = ((Varnode*)zip[0])->codeGen(context); 
-	return new StoreInst (Val, Ptr, context.currentBlock()); 
-}
-
-
-
-
-
-
-
-
-
-
 
 
 Value* Expnode::codeGen(CodeContext& context)

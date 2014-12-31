@@ -15,7 +15,6 @@ extern "C"
 using namespace std;
 
 
-void unrolling(const Node* nd,vector<Node*>& v);
 struct SYMBOL
 {
 	typedef enum {VAR,FUNC,CLASS,ARRAY} ACCTYPE;
@@ -45,6 +44,7 @@ struct symbase
 	void add_func(Node* f,class symclass* s,ERRMSG& e);
 	protected:
 	bool isempty(Node *nd);
+	void unrolling(const Node* nd,vector<Node*>& v);
 	void add_var(Node *args,ERRMSG& e);
 	void space(int n);
 	SYMBOL* getarg(Node*,ERRMSG&);
