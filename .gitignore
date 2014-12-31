@@ -18,3 +18,4 @@ LexAndYaccCode/
 my_toy_compiler-master/
 CPL/CPL
 CPL/*.user
+Makefile

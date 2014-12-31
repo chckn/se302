@@ -1,4 +1,5 @@
 #include "semantic.h"
+#include <stack>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
@@ -12,9 +13,11 @@ using namespace llvm;
 void assmebly();
 Value* NUMCG(Expnode *node,CodeContext& context);
 Value* assignmentCG(Expnode *node,CodeContext& context); 
+#include <llvm/Support/raw_ostream.h>
+
 
 class CodeGenBlock {
-	public:
+public:
     BasicBlock *block;
     Value *returnValue;
     std::map<std::string, Value*> locals;
@@ -35,3 +38,5 @@ public:
     void setCurrentReturnValue(Value *value) { blocks.top()->returnValue = value; }
     Value* getCurrentReturnValue() { return blocks.top()->returnValue; }
 };
+
+void assmebly();

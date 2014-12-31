@@ -81,7 +81,7 @@ bool symbase::isempty(Node *nd)
 		return true;
 	return false;
 }
-void symbase::unrolling(const Node* nd,vector<Node*>& v)
+void unrolling(const Node* nd,vector<Node*>& v)
 {
 	Node *i=nd->first;
 	while(i!=NULL)
