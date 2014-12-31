@@ -1,0 +1,9 @@
+SOURCES += lex.yy.c
+SOURCES += mylang.tab.c
+HEADERS += mylang.tab.h
+FORMS += untitled.ui
+　　TEMPLATE = lib
+　　CONFIG += debug warn_on qt thread x11 plugin
+　　TARGET = ../bin/panel_qt
+　　INCLUDEPATH = ../../../../xsim ../../../../xsim/IMdkit
+　　DEFINES = BDB_VERSION4 OS_LINUX 

@@ -1,0 +1,17 @@
+*~
+*.a
+*.bak
+*.txt
+*.zip
+*.o
+*.swp
+*.xml
+*.out
+a.c
+*.docx
+assembly
+semantic
+LexAndYaccCode/
+my_toy_compiler-master/
+CPL/CPL
+CPL/*.user
