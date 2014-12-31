@@ -8,6 +8,8 @@
 *.xml
 *.out
 a.c
+mylang.c
+mylang.tab.*
 *.docx
 assembly
 semantic
