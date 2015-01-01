@@ -14,7 +14,8 @@ void assmebly();
 Value* NUMCG(Expnode *node,CodeContext& context);
 Value* assignmentCG(Expnode *node,CodeContext& context); 
 #include <llvm/Support/raw_ostream.h>
-
+extern vector<SYMBOL*> t_vec;
+extern map<string,int> t_tbl;
 
 class CodeGenBlock {
 public:
@@ -25,12 +26,14 @@ public:
 
 class CodeContext {
     std::stack<CodeGenBlock *> blocks;
-    Function *mainFunction;
-
+    vector<Type*> t_type;
+	Function *mainFunction;
+	void initDeclar(symbase*);
 public:
     Module *module;
     CodeContext() { module = new Module("main", getGlobalContext()); }
-    void generate(Node* root);
+    
+	void generate(symprog*);
     std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
     BasicBlock *currentBlock() { return blocks.top()->block; }
     void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->returnValue = NULL; blocks.top()->block = block; }

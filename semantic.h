@@ -24,6 +24,7 @@ struct SYMBOL
 	int size;
 	string name;
 	SYMBOL(ACCTYPE _acc);
+	llvm::Value* value;
 };
 
 struct Expnode:public Node
@@ -43,6 +44,7 @@ struct symbase
 	virtual SYMBOL* find(string);
 	virtual bool exists(string);
 	void add_func(Node* f,class symclass* s,ERRMSG& e);
+	class symclass* parent;
 	protected:
 	bool isempty(Node *nd);
 	void add_var(Node *args,ERRMSG& e);
@@ -52,7 +54,7 @@ struct symbase
 };
 class symclass:public SYMBOL,public symbase
 {
-	symclass* m_extends;
+	//symclass* m_extends;
 	public:
 	symclass();
 	symclass(Node*,ERRMSG&);
@@ -80,7 +82,7 @@ struct symfunc:public SYMBOL,public symcode
 	symfunc(Node *f,symclass* c,ERRMSG& e);
 	void print(int n);
 	SYMBOL* find(string);
-	symclass* parent;
+	//symclass* parent;
 };
 
 class symprog:public symcode

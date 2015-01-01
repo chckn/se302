@@ -1,0 +1,38 @@
+ program example()
+   function ackerman(m, n)
+     var m is integer;
+     var n is integer;
+     return integer;
+   is
+   begin
+
+    if m > 0 and n == 0 then
+       return ackerman(m - 1, 1);
+     end if
+   end function ackerman;
+   type arin is array of 3 integer;
+   type arrin is array of 5 arin;
+   type a is class
+     // 类中的所有内容都是可以公开访问的
+     // 类的成员变量
+     var v is arin;
+     // 类的函数
+     function f(x)
+       var x is integer;
+       return integer;
+     is
+       var t is integer;
+     begin
+       t := x + v;
+       v := x;
+       return t;
+     end function f;
+   end class;
+   type arr is array of 10 a;
+is
+var ab is arrin;
+var b is integer;
+begin
+ab[3][0]:=b;
+end
+

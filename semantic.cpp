@@ -117,7 +117,7 @@ SYMBOL* symbase::getarg(Node *arg,ERRMSG& e)
 	s->name=arg->first->next->str;
 	Node* tp=arg->last->first;
 	s->type=getype(tp,e);
-	s->size=0;
+	s->size=1;
 	return s;
 }
 void symbase::space(int n)
@@ -211,8 +211,9 @@ void symfunc::parainit(Node *var,Node* header,ERRMSG& e)
 		this->type=getype(j->last->first,e);
 	}
 }
-symfunc::symfunc(Node *f,symclass* c,ERRMSG& e):SYMBOL(SYMBOL::FUNC),parent(c)
+symfunc::symfunc(Node *f,symclass* c,ERRMSG& e):SYMBOL(SYMBOL::FUNC)
 {		
+	parent=c;
 	vector<Node*> lst;
 	unrolling(f,lst);
 	fprintf(stderr,"checkident:%s-%s\n",lst[1]->str,lst[9]->str);
@@ -274,6 +275,7 @@ bool symclass::typecheck(ERRMSG& e)
 symclass::symclass():SYMBOL(ACCTYPE::CLASS)
 {
 	name="program";
+	parent=NULL;
 }
 symclass::symclass(Node* f,ERRMSG& e):SYMBOL(ACCTYPE::CLASS)
 	{
@@ -292,11 +294,11 @@ symclass::symclass(Node* f,ERRMSG& e):SYMBOL(ACCTYPE::CLASS)
 			}
 			else
 			{
-				m_extends=static_cast<symclass*>(t_vec[it->second]);
+				parent=static_cast<symclass*>(t_vec[it->second]);
 			}
 		}
 		else
-			m_extends=NULL;
+			parent=NULL;
 		add_var(lst[i],e);//arguments
 		Node * nd=lst[i+1];
 		while(!isempty(nd->first))
@@ -309,10 +311,10 @@ symclass::symclass(Node* f,ERRMSG& e):SYMBOL(ACCTYPE::CLASS)
 	{
 		space(n);
 		cout<<"Class Name:"<<name<<endl;
-		if(m_extends)
+		if(parent)
 		{
 			space(n+1);
-			cout<<"Extends:"<<m_extends->name<<endl;
+			cout<<"Extends:"<<parent->name<<endl;
 		}
 		symbase::print(n+1);	
 
@@ -485,8 +487,8 @@ SYMBOL* symclass::find(string str)
 {
 	SYMBOL *s=symbase::find(str);
 	if(s) return s;
-	if(m_extends)
-		s=m_extends->find(str);
+	if(parent)
+		s=parent->find(str);
 	return s;
 }
 SYMBOL* symfunc::find(string str)
