@@ -34,7 +34,8 @@ struct Expnode:public Node
 	//type=3
 	int valtype;
 	virtual ~Expnode();
-	llvm::Value* codeGen(class CodeContext&);
+	void codeGen(class CodeContext&,int);
+	llvm::Value* value;
 };
 typedef string ERRMSG;
 
@@ -66,7 +67,7 @@ struct symcode:public symbase
 {
 	Node* code;
 	SYMBOL* getsym(Node*,ERRMSG&);
-	bool isname(Node*,const char*);
+	static bool isname(Node*,const char*);
 	bool check(const Expnode*,int vtype,ERRMSG&);
 	void setvar(Node*&,ERRMSG&);
 	void setnum(Node*& b,ERRMSG& e);

@@ -1,15 +1,4 @@
  program example()
-   function ackerman(m, n)
-     var m is integer;
-     var n is integer;
-     return integer;
-   is
-   begin
-
-    if m > 0 and n == 0 then
-       return ackerman(m - 1, 1);
-     end if
-   end function ackerman;
    type arin is array of 3 integer;
    type arrin is array of 5 arin;
    type a is class
@@ -30,9 +19,14 @@
    end class;
    type arr is array of 10 a;
 is
-var ab is arrin;
+var i is integer;
 var b is integer;
+var ab is arrin;
+var ar is arin;
 begin
-ab[3][0]:=b;
+ar[3]:=144;
+//ar[1]:=ar[2];
+ab[2][0]:=ar[3];
+i:=ab[2][0];
 end
 

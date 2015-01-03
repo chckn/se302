@@ -1,4 +1,5 @@
 #include "semantic.h"
+#include <cassert>
 #include <stack>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -21,6 +22,7 @@ class CodeGenBlock {
 public:
     BasicBlock *block;
     Value *returnValue;
+	IRBuilder<> *builder;
     std::map<std::string, Value*> locals;
 };
 
@@ -36,7 +38,8 @@ public:
 	void generate(symprog*);
     std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
     BasicBlock *currentBlock() { return blocks.top()->block; }
-    void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->returnValue = NULL; blocks.top()->block = block; }
+	IRBuilder<> *getBuilder() { return blocks.top()->builder;}
+    void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->returnValue = NULL; blocks.top()->block = block; blocks.top()->builder=new IRBuilder<>(block); }
     void popBlock() { CodeGenBlock *top = blocks.top(); blocks.pop(); delete top; }
     void setCurrentReturnValue(Value *value) { blocks.top()->returnValue = value; }
     Value* getCurrentReturnValue() { return blocks.top()->returnValue; }

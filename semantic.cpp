@@ -449,6 +449,8 @@ symprog::symprog()
 				cout<<error<<endl<<"Typecheck failed;\n";
 	
 		}
+		else
+			typecheck(error);
 	}
 void symbase::print(int n)
 {
@@ -556,7 +558,6 @@ void Funcnode::getParameter(vector<Expnode*>& vec)
 }
 SYMBOL* symcode::getsym(Node* ident,ERRMSG& e)
 {
-	fprintf(stderr,"getsym:symbol name:%s\n",ident->str);
 	SYMBOL* s;
 
 	if((s=find(ident->str))==NULL)
@@ -564,8 +565,8 @@ SYMBOL* symcode::getsym(Node* ident,ERRMSG& e)
 		fprintf(stderr,"ERR:01\n");
 		e=e+" variable "+ident->str+" not found\n";
 		return NULL;
-	}
-	
+	}	
+	fprintf(stderr,"getsym:symbol name:%s,Symbol:%x\n",ident->str,s);
 	return s;
 }
 bool symcode::isname(Node* nd,const char *str)
@@ -619,6 +620,7 @@ void symcode::setvar(Node*& var,ERRMSG& e)
 	}	
 	Varnode *newnode=new Varnode(var,s);	
 	var=newnode;
+	fprintf(stderr,"var:%x:%s-sym:%x\n",var,var->name,((Varnode*) var)->sym);
 }
 void symcode::setfcall(Node*& fcall,ERRMSG& e)
 {
@@ -734,8 +736,13 @@ void symcode::traversal(Node*& nd,ERRMSG& e)
 					|| isname(nd,"primary") || isname(nd,"final") || isname(nd,"bexpressions")
 					|| isname(nd,"bprimary") || isname(nd,"bterm"))
 			{
+				/*
 				expnode=new Expnode(nd,Expnode::EXP);
 				expnode->valtype=((Expnode*)zip[0])->valtype;
+				*/
+				nd->first->next=nd->next;
+				nd=nd->first;
+				return;
 			}
 			break;
 		case 3:

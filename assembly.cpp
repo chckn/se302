@@ -1,29 +1,107 @@
 #include "assembly.h"
 
 Value* NUMCG(Expnode* node, CodeContext& context){
-	int value = node->integer;
-	return ConstantInt::get(Type::getInt32Ty(getGlobalContext()),value, true);
+	int v = node->integer;
+	return ConstantInt::get(Type::getInt32Ty(getGlobalContext()),v, true);
 }
-
+Value* getArrayPtr(Node* node,IRBuilder<>* builder)
+{
+	vector<Node*> vec;//index from node
+	vector<Value*> idx;//convert it to Value*
+	Arrnode* nd=(Arrnode*)node;
+	/* Begin:Just Follow It */
+	nd->getIndices(vec);
+	idx.push_back(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),0,true));
+	for(int i=vec.size()-1;i>=0;i--)
+	{
+		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
+		idx.push_back(((Varnode*)vec[i])->value);
+	}
+	/* End: Don't ask why*/
+	fprintf(stderr,"ARR:sym:%x\n",nd->sym);
+	return builder->CreateGEP(nd->sym->value,idx);
+}		
 Value* assignmentCG(Expnode* node, CodeContext& context){
 	vector<Node*> zip;                                            
-        unrolling(node, zip);
-	Value* Val = ((Expnode*)zip[2])->codeGen(context);
-	Value* Ptr = ((Varnode*)zip[0])->codeGen(context); 
-	return new StoreInst (Val, Ptr, context.currentBlock()); 
+	unrolling(node, zip);
+	Value* Val = ((Expnode*)zip[2])->value;
+	Value* Ptr;
+	IRBuilder<>* builder=context.getBuilder();
+	if(zip[0]->type==Expnode::ARR)
+	{
+		//if it is an array
+		Ptr=getArrayPtr(zip[0],builder);
+		return builder->CreateStore(Val,Ptr);
+
+	}
+	else
+	{
+		Varnode* nd=((Varnode*)zip[0]);
+		Ptr=nd->value;
+		fprintf(stderr,"Val:%x,ptr:%x",Val,Ptr);
+		return builder->CreateStore(Val, Ptr); 
+	}
 }
+Value* varCG(Expnode* node,CodeContext& context)
+{
+	Value* Ptr;
+	IRBuilder<>* builder=context.getBuilder();
+	if(strcmp(node->first->name,"var")==0)
+	{
+		//array
+		if(node->type=Expnode::ARR)
+		{
+			Ptr=getArrayPtr(node,builder);
+			return builder->CreateLoad(Ptr,((Varnode*)node)->sym->name);
+		}
+		else//class
+		{
 
+		}
+	}
+	else
+	{
+		fprintf(stderr,"node:%x:%d-%s-symbol:%x\n",node,node->type,node->name,((Varnode*)node)->sym);
+		SYMBOL *s=((Varnode*)node)->sym;
+		return new LoadInst(s->value,"_"+s->name,context.currentBlock());		
 
-
-Value* Expnode::codeGen(CodeContext& context)
+	}
+}
+void Expnode::codeGen(CodeContext& context,int n=0)
 {
 	/*
-		Exp
+	   Exp
+	   Value* intValue=ConstantInt::get(Type::getInt64Ty(getGlobalContext()),32,true);
+	   Value* Var=new AllocaInst(Type::getInt64Ty(getGlobalContext()),"Var1",context.currentBlock());	
+	   new StoreInst(intValue,Var,context.currentBlock());
+	 */
 
-	*/
-	Value* intValue=ConstantInt::get(Type::getInt64Ty(getGlobalContext()),32,true);
-	Value* Var=new AllocaInst(Type::getInt64Ty(getGlobalContext()),"Var1",context.currentBlock());	
-	new StoreInst(intValue,Var,context.currentBlock());
+	for(int i=0;i<n;i++)
+		fprintf(stderr," ");
+	fprintf(stderr,"Node Name:%s,%x\n",this->name,this);
+	if(first && strcmp(first->name,"EMPTY")!=0)
+		((Expnode*)first)->codeGen(context,n+1);
+	if(next && strcmp(next->name,"EMPTY")!=0)
+		((Expnode*)next)->codeGen(context,n);
+	if(symcode::isname(this,"NUM"))
+	{
+		this->value=NUMCG(this,context);
+		fprintf(stderr," Value:%x\n",this->value);
+		return;
+	}
+	if(symcode::isname(this,"var"))
+	{
+		this->value=varCG(this,context);
+		fprintf(stderr," Value:%x\n",this->value);
+		return;
+	}	
+	if(symcode::isname(this,"assignment"))
+	{
+		this->value=assignmentCG(this,context);
+		fprintf(stderr," Value:%x\n",this->value);
+		return;
+	}
+
 }
 void CodeContext::initDeclar(symbase* base)
 {
@@ -59,12 +137,14 @@ void CodeContext::initDeclar(symbase* base)
 				continue;
 			}
 			ConstantInt* con=ConstantInt::get(Type::getInt32Ty(getGlobalContext()),s->size,false);
-			local[s->name]=new AllocaInst(t_type[s->type],con,s->name,currentBlock());		
+			s->value=new AllocaInst(t_type[s->type],con,s->name,currentBlock());
+			fprintf(stderr,"%s-symobol:%x\n",s->name.c_str(),s->value);
+			local[s->name]=s->value;
 		}
 	}
 	fprintf(stderr,"parent:%x\n",base->parent);
-//	if(base->parent)
-//		initDeclar(base->parent);
+	//	if(base->parent)
+	//		initDeclar(base->parent);
 }
 void CodeContext::generate(symprog* prog)
 {
