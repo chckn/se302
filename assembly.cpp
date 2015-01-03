@@ -12,7 +12,7 @@ Value* getArrayPtr(Node* node,IRBuilder<>* builder)
 	/* Begin:Just Follow It */
 	nd->getIndices(vec);
 	idx.push_back(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),0,true));
-	for(int i=vec.size()-1;i>=0;i--)
+	for(int i=0;i<vec.size();i++)
 	{
 		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
 		idx.push_back(((Varnode*)vec[i])->value);
