@@ -33,9 +33,10 @@
 }
 %token <str> IDENT
 %token <integer> NUM
+%verbose
 %error-verbose
 %token PROGRAM IS BEGINS END TYPE ARRAY OF CLASS  EXTENDS FUNCTION  RETURN ASSIGN PRINT FOREACH IN DO REPEAT UNTIL WHILE IF THEN ELSE ELIF OR AND EQUAL LEQA SEQA YES NO VAR INTEGER BOOLEAN
-%type <node> program exp indices var nevar boolean variables type argument retype sentence funcheader methods nevalues values fname fcall final primary term coperator declarblock block arguments if elif elifs else while repeat foreach print assignment return function class array bterm bexpressions bprimary declar 
+%type <node> program exp index var nevar boolean variables type argument retype sentence funcheader methods nevalues values fname fcall final primary term coperator declarblock block arguments if elif elifs else while repeat foreach print assignment return function class array bterm bexpressions bprimary declar 
 %left '+' '-'
 %left '*' '/' '%'
 %%
@@ -56,19 +57,16 @@ boolean:	YES {$$=noden("boolean");push($$,nodei(1,"BOOL"));}
 ;
 exp:		final {$$=noden("exp");push($$,$1);}
 			| boolean {$$=noden("exp");push($$,$1);}
-			| fcall {$$=noden("exp");push($$,$1);}
-
-/*
-index		'[' final ']' {$$=noden("index");push($$,$2);} ignore[ ]
-*/
+/*		| fcall {$$=noden("exp");push($$,$1);}*/
 ;
-indices:	'[' final ']' {$$=noden("indices");push($$,$2);}
-			| '[' final ']' indices {$$=noden("indices");push($$,$2);push($$,$4);}
+
+index:		'[' final ']' {$$=noden("index");push($$,$2);} 
+
 ;
 var:		IDENT {$$=noden("var");push($$,nodes($1,"IDENT"));}
 			| var '.' IDENT {$$=noden("var");push($$,$1);push($$,nodes(".","DOT"));
 							push($$,nodes($3,"IDENT"));}
-			| var indices {$$=noden("var");push($$,$1);push($$,$2);}
+			| var index {$$=noden("var");push($$,$1);push($$,$2);}
 ;
 nevar:		var {$$=noden("nevar");push($$,$1);}
 			| var ',' nevar {

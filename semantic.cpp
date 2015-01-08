@@ -41,16 +41,10 @@ string ptype(int type)
 	return typestr+i->name+szstr;
 
 }
-int arraytype(int t,int step)
+int arraytype(int t)
 {
 	SYMBOL *s=t_vec[t];
-	for(int i=1;i<=step;i++)
-	{
-		t=s->type;
-		s=t_vec[t];
-		//BUG.The step may not enough
-	}
-	return t;
+	return s->type;
 }
 int getype(Node *tp,ERRMSG& e)
 {
@@ -138,6 +132,7 @@ void symfunc::print(int n)
 		space(n+2);
 		cout<<m_parameter[i]->name<<"->"<<ptype(m_parameter[i]->type)<<endl;
 	}
+	symbase::print(n+1);	
 }
 SYMBOL::SYMBOL(ACCTYPE _acc):acc(_acc)
 {
@@ -527,18 +522,18 @@ Varnode::Varnode(Node *nd,SYMBOL* s):Expnode(nd,NDTYPE::VAR),sym(s)
 void Arrnode::getIndices(vector<Node*>& vec)
 {
 	Node* i=this->last;
-	while(strcmp(i->name,"indices")==0)
+	if(strcmp(i->name,"index")==0)
 	{
 		vec.push_back(i->first);	
 		i=i->last;
 	}	
 }
-Arrnode::Arrnode(Node* nd,SYMBOL* s):Varnode(nd,s)
+Arrnode::Arrnode(Node* nd,SYMBOL* s,int vtype):Varnode(nd,s)
 {
 	type=NDTYPE::ARR;
 	vector<Node*> v;
 	getIndices(v);
-	valtype=arraytype(s->type,v.size());	
+	valtype=arraytype(vtype);	
 }
 Funcnode::Funcnode(Node* nd,symfunc* f):Expnode(nd,NDTYPE::FUNC),sym(f)
 {
@@ -611,9 +606,9 @@ void symcode::setvar(Node*& var,ERRMSG& e)
 			return;
 		}
 	}		
-	if(isname(var->last,"indices"))
+	if(isname(var->last,"index"))
 	{
-		Arrnode *anode=new Arrnode(var,s);
+		Arrnode *anode=new Arrnode(var,s,((Varnode*)v[0])->valtype);
 		var=anode;
 		return;
 
@@ -861,6 +856,8 @@ void symprog::sem_declar(Node *ptr,string& st)
 symprog* semantic(bool pr)
 {
 	Node *ptr=syntax(0);
+	if(ptr==NULL)
+		exit(0);
 	symprog *prog=new symprog();
 	prog->run(ptr,pr);				
 	return prog;

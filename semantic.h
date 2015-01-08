@@ -112,7 +112,7 @@ struct Varnode:public Expnode
 };
 struct Arrnode:public Varnode
 {
-	Arrnode(Node*,SYMBOL*);
+	Arrnode(Node*,SYMBOL*,int);
 	void getIndices(vector<Node*>& vec);
 };
 symprog* semantic(bool ifprint);
