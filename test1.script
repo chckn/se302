@@ -23,7 +23,9 @@ var i is integer;
 var b is integer;
 var ab is arrin;
 var ar is arin;
+var A is a;
 begin
+a.v:=6;
 ar[3]:=144;
 //ar[1]:=ar[2];
 ab[2][0]:=ar[3];
