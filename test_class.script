@@ -1,0 +1,30 @@
+ program example()
+ 
+   // 可以定义一个类
+   type a is class
+     // 类中的所有内容都是可以公开访问的
+     // 类的成员变量
+     var v is integer;
+     // 类的函数
+     function f(x)
+       var x is integer;
+       return integer;
+     is
+       var t is integer;
+     begin
+		t:=x;
+		return t;
+     end function f;
+   end class;
+ 
+
+ // 主程序的声明
+ is
+	var b is integer;
+	var c is a;
+ // 主程序
+ begin
+	b:=1;
+	c.v:=2;
+ end
+

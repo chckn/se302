@@ -21,7 +21,7 @@ extern map<string,int> t_tbl;
 class CodeGenBlock {
 public:
     BasicBlock *block;
-    Value *returnValue;
+    symfunc* function;
 	IRBuilder<> *builder;
     std::map<std::string, Value*> locals;
 };
@@ -34,15 +34,17 @@ class CodeContext {
 public:
     Module *module;
     CodeContext() { module = new Module("main", getGlobalContext()); }
-    
+	StructType* genClass(symclass*);    
+	void genClassFunc(symclass*);
+	void initFunc(symfunc*,bool par=true);
 	void generate(symprog*);
     std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
     BasicBlock *currentBlock() { return blocks.top()->block; }
 	IRBuilder<> *getBuilder() { return blocks.top()->builder;}
-    void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->returnValue = NULL; blocks.top()->block = block; blocks.top()->builder=new IRBuilder<>(block); }
+    void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->function = NULL; blocks.top()->block = block; blocks.top()->builder=new IRBuilder<>(block); }
     void popBlock() { CodeGenBlock *top = blocks.top(); blocks.pop(); delete top; }
-    void setCurrentReturnValue(Value *value) { blocks.top()->returnValue = value; }
-    Value* getCurrentReturnValue() { return blocks.top()->returnValue; }
+    void setfunc(symfunc* f) { blocks.top()->function = f; }
+    symfunc* getfunc() { return blocks.top()->function; }
 };
 
 void assmebly();

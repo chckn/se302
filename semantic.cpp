@@ -267,6 +267,7 @@ bool symclass::typecheck(ERRMSG& e)
 				e+=" Typecheck Succeed\n";
 		}
 	}
+	return pass;
 }
 symclass::symclass():SYMBOL(ACCTYPE::CLASS)
 {
@@ -393,23 +394,21 @@ symprog::symprog()
 		vector<symfunc*> m_func;
 		vector<symclass*> m_cls;
 		for(map<string,SYMBOL*>::iterator it=m_var.begin();it!=m_var.end();++it)
-		{
-			switch(it->second->acc)
-			{
-				case SYMBOL::FUNC:
+			if(it->second->acc==SYMBOL::FUNC)
 					m_func.push_back((symfunc*)it->second);
-					break;
-				case SYMBOL::CLASS:
-					m_cls.push_back((symclass*)it->second);
-					break;
-			}
-		}
 		bool chk,pass=true;
 		for(int i=0;i<m_cls.size();i++)
 			pass=pass & m_cls[i]->typecheck(e1);
 		if(e1!="")
 			e=e1;
-		e1="";
+		for(int i=0;i<t_vec.size();i++)
+			if(t_vec[i]->acc==SYMBOL::CLASS)
+			{
+				e1="";
+				pass=pass & ((symclass*)t_vec[i])->typecheck(e1);
+				e+=e1;
+			}
+		
 		for(int i=0;i<m_func.size();i++)
 		{
 			e=e+"Func:"+m_func[i]->name+'\n';

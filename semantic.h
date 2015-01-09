@@ -57,6 +57,7 @@ class symclass:public SYMBOL,public symbase
 {
 	//symclass* m_extends;
 	public:
+	map<string,int> m_member;
 	symclass();
 	symclass(Node*,ERRMSG&);
 	bool typecheck(ERRMSG&);
@@ -109,12 +110,12 @@ struct Varnode:public Expnode
 {
 	Varnode(Node*,SYMBOL*);
 	SYMBOL* sym;
+	llvm::Value* ptr;
 };
 struct Arrnode:public Varnode
 {
 	Arrnode(Node*,SYMBOL*,int);
 	void getIndices(vector<Node*>& vec);
-	llvm::Value* ptr;
 };
 symprog* semantic(bool ifprint);
 #endif

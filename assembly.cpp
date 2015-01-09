@@ -4,6 +4,17 @@ Value* NUMCG(Expnode* node, CodeContext& context){
 	int v = node->integer;
 	return ConstantInt::get(Type::getInt32Ty(getGlobalContext()),v, true);
 }
+Value* getStructPtr(Node* node,IRBuilder<>* builder)
+{
+	Varnode* nd=(Varnode*)(node->first);
+	vector<Node*> vec;
+	unrolling(node,vec);
+	symclass* cls=(symclass*)t_vec[nd->valtype];
+	string stridx=vec[2]->str;
+	fprintf(stderr,"ndname:%s,%p,getStructPtr:%x,%x",nd->name,nd->sym->value,nd->value);
+	return builder->CreateStructGEP(nd->ptr,cls->m_member[stridx]);
+	
+}
 Value* getArrayPtr(Node* node,IRBuilder<>* builder)
 {
 	vector<Node*> vec;//index from node
@@ -12,15 +23,12 @@ Value* getArrayPtr(Node* node,IRBuilder<>* builder)
 	/* Begin:Just Follow It */
 	nd->getIndices(vec);
 	idx.push_back(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),0,true));
-//	for(int i=0;i<vec.size();i++)
-//	{
-//		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
-		idx.push_back(((Varnode*)vec[0])->value);
-//	}
-	if(nd->first->type==Expnode::VAR)
-		nd->ptr=builder->CreateGEP(nd->sym->value,idx);
-	else
-		nd->ptr=builder->CreateGEP(((Arrnode*)nd->first)->ptr,idx);
+	idx.push_back(((Varnode*)vec[0])->value);
+	fprintf(stderr,"%s-getArr-%p,sym:%p(val:%p)\n",nd->name,nd,nd->sym,nd->sym->value);
+//	if(nd->first->type==Expnode::VAR)
+//		nd->ptr=builder->CreateGEP(nd->sym->value,idx);
+//	else
+		nd->ptr=builder->CreateGEP(((Varnode*)nd->first)->ptr,idx);
 	/* End: Don't ask why*/
 	return nd->ptr;
 }		
@@ -41,33 +49,41 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 	{
 */	
 		Varnode* nd=((Varnode*)zip[0]);
-		Ptr=nd->value;
+		Ptr=nd->ptr;
 		fprintf(stderr,"Val:%x,ptr:%x",Val,Ptr);
 		return builder->CreateStore(Val, Ptr); 
 //	}
 }
-Value* varCG(Expnode* node,CodeContext& context)
+Value* varCG(Node* node,CodeContext& context)
 {
-	Value* Ptr;
+	Varnode* nd=(Varnode*)node;
 	IRBuilder<>* builder=context.getBuilder();
 	if(strcmp(node->first->name,"var")==0)
 	{
 		//array
-		if(node->type=Expnode::ARR)
+		int mtype=((Varnode*)node->first)->valtype;
+		if(t_vec[mtype]->acc==SYMBOL::ARRAY)
 		{
-			Ptr=getArrayPtr(node,builder);
-			return builder->CreateLoad(Ptr,((Varnode*)node)->sym->name);
+			nd->ptr=getArrayPtr(node,builder);
+			return builder->CreateLoad(nd->ptr,((Varnode*)node)->sym->name);
 		}
 		else//class
 		{
-			
+			nd->ptr=getStructPtr(node,builder);
+			return builder->CreateLoad(nd->ptr,((Varnode*)(node->first->next->next)->str));
 		}
 	}
 	else
 	{
-		fprintf(stderr,"node:%x:%d-%s-symbol:%x\n",node,node->type,node->name,((Varnode*)node)->sym);
 		SYMBOL *s=((Varnode*)node)->sym;
-		return new LoadInst(s->value,"_"+s->name,context.currentBlock());		
+		fprintf(stderr,"node:%x:%d-%s-symbol:%s,%x\n",node,node->type,node->name,s->name.c_str(),s->value);
+		nd->ptr=s->value;
+		if(nd->ptr==NULL)
+		{
+			symclass* cls=context.getfunc()->parent;
+			//getClassVar(cls,s->name);
+		}		
+		return new LoadInst(nd->ptr,"_"+s->name,context.currentBlock());		
 
 	}
 }
@@ -79,12 +95,9 @@ Value* fcallCG(Node* node,CodeContext& context)
 	vector<Value*> para;//parameter
 	if(symcode::isname(fname->first,"var"))
 	{
+		para.push_back(((Varnode*)fname->first)->ptr);
 		//class member function
 		//push the class as the first parameter
-	}
-	else
-	{
-
 	}
 		
 	Node* i=fcall->last->first;//nevalues
@@ -158,6 +171,32 @@ void Expnode::codeGen(CodeContext& context,int n=0)
 	}
 
 }
+void CodeContext::initFunc(symfunc* f,bool par)
+{
+	FunctionType *ftype;
+	vector<Type*> argtypes;
+	fprintf(stderr,"func:%s,%s,%d,%p\n",f->name.c_str(),f->parent->name.c_str(),f->parent->type,t_type[f->parent->type]);	
+	string f_name=f->parent->name+"."+f->name;
+	if(par)
+		argtypes.push_back(PointerType::getUnqual(t_type[f->parent->type]));
+	for(int j=0;j<f->m_parameter.size();j++)
+	{
+		argtypes.push_back(t_type[f->m_parameter[j]->type]);
+	}				
+	if(f->type==-1)//-1:void
+		ftype=FunctionType::get(Type::getVoidTy(getGlobalContext()),false);
+	else
+		ftype=FunctionType::get(t_type[f->type],makeArrayRef(argtypes),false);
+	Function *func=Function::Create(ftype,GlobalValue::InternalLinkage,f_name,this->module);
+	BasicBlock *bblock=BasicBlock::Create(getGlobalContext(),f_name,func);
+	this->pushBlock(bblock);
+	initDeclar(f);
+	setfunc(f);
+	((Expnode*)f->code)->codeGen(*this);	
+	ReturnInst::Create(getGlobalContext(), bblock);
+	this->popBlock();
+	f->value=func;
+}
 void CodeContext::initDeclar(symbase* base)
 {
 	map<string,Value*> local=this->locals();
@@ -168,43 +207,55 @@ void CodeContext::initDeclar(symbase* base)
 		s=it->second;
 		if(local.find(s->name)==local.end())
 		{
-			if(s->acc==SYMBOL::FUNC)
-			{ 
-				//FUNCTION?
-				fprintf(stderr,"Name:%s\n",s->name.c_str());
-				FunctionType *ftype;
-				vector<Type*> argtypes;
-				symfunc* f=static_cast<symfunc*>(s);
-				for(int j=0;j<f->m_parameter.size();j++)
-				{
-					argtypes.push_back(t_type[f->m_parameter[j]->type]);
-				}				
-				if(s->type==-1)//-1:void
-					ftype=FunctionType::get(Type::getVoidTy(getGlobalContext()),false);
-				else
-					ftype=FunctionType::get(t_type[s->type],makeArrayRef(argtypes),false);
-				Function *func=Function::Create(ftype,GlobalValue::InternalLinkage,s->name,this->module);
-				BasicBlock *bblock=BasicBlock::Create(getGlobalContext(),s->name,func);
-				this->pushBlock(bblock);
-				initDeclar(f);
-				((Expnode*)f->code)->codeGen(*this);
-				
-				ReturnInst::Create(getGlobalContext(), bblock);
-				this->popBlock();
-				fprintf(stderr,"func(%s):%p",f->name.c_str(),func);
-				f->value=func;
-				local[f->name]=func;
-				continue;
-			}
-			ConstantInt* con=ConstantInt::get(Type::getInt32Ty(getGlobalContext()),s->size,false);
-			s->value=new AllocaInst(t_type[s->type],con,s->name,currentBlock());
-			fprintf(stderr,"%s-symobol:%x\n",s->name.c_str(),s->value);
+		if(s->acc==SYMBOL::FUNC)
+		{ 
+			//FUNCTION?
+			fprintf(stderr,"Name:%s\n",s->name.c_str());
+			initFunc((symfunc*)s,false);
+			continue;
+		}
+		ConstantInt* con=ConstantInt::get(Type::getInt32Ty(getGlobalContext()),s->size,false);
+		Value* val=new AllocaInst(t_type[s->type],con,s->name,currentBlock());
+		s->value=val;
+		fprintf(stderr,"%s:%p-acc:%d,type:%d,size:%d\n",s->name.c_str(),s,s->acc,s->type,s->size);
 			local[s->name]=s->value;
 		}
 	}
 	fprintf(stderr,"parent:%x\n",base->parent);
 	//	if(base->parent)
 	//		initDeclar(base->parent);
+}
+void CodeContext::genClassFunc(symclass *cls)
+{
+	SYMBOL* s;
+	for(auto it=cls->m_var.begin();it!=cls->m_var.end();++it)
+	{
+		s=it->second;
+		if(s->acc==SYMBOL::FUNC)
+		{
+			fprintf(stderr,"Func name:%s\n",s->name.c_str());
+			initFunc((symfunc*)s);
+		}	
+	}	
+	
+}
+StructType* CodeContext::genClass(symclass* cls)
+{
+	fprintf(stderr,"class:%s\n",cls->name.c_str());
+	vector<Type*> membertype;
+	SYMBOL* s;	
+	for(auto it=cls->m_var.begin();it!=cls->m_var.end();++it)
+	{
+		s=it->second;
+		if(s->acc!=SYMBOL::FUNC)
+		{
+			cls->m_member[s->name]=membertype.size();
+			fprintf(stderr,"\tmember:%s-%d\n",s->name.c_str(),cls->m_member[s->name]);
+			membertype.push_back(t_type[s->type]);
+		}
+	}	
+	return StructType::create(getGlobalContext(),makeArrayRef(membertype),cls->name);
+
 }
 void CodeContext::generate(symprog* prog)
 {
@@ -223,8 +274,10 @@ void CodeContext::generate(symprog* prog)
 		}
 		else if(t_vec[i]->acc==SYMBOL::CLASS)
 		{
-			//structed type	
-			t_type.push_back(StructType::get(getGlobalContext()));
+			//structed type
+			StructType* t_struct=genClass((symclass*)t_vec[i]);
+			t_type.push_back(t_struct);
+			genClassFunc((symclass*)t_vec[i]);
 		}
 	}
 
