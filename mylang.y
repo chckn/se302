@@ -116,7 +116,7 @@ nevalues:	exp {$$=noden("nevalues");push($$,$1);}
 				push($$,$3);}
 ;
 values:		/*empty*/ {$$=noden("values");push($$,nodes("","EMPTY"));}
-			| nevalues {$$=noden("nevalues");push($$,$1);}
+			| nevalues {$$=noden("values");push($$,$1);}
 ;
 fname:		IDENT {$$=noden("fname");push($$,nodes($1,"IDENT"));}
 			| var '.' IDENT {
@@ -203,6 +203,7 @@ assignment:		var ASSIGN exp ';' {$$=noden("assignment");push($$,$1);
 ;
 return:		RETURN exp ';' {$$=noden("return");push($$,noden("RETURN"));
 				push($$,$2);}
+			| RETURN ';' {$$=noden("return");push($$,nodes("","EMPTY"));}
 ;
 function:	FUNCTION IDENT '(' variables ')' funcheader IS arguments BEGINS block END FUNCTION IDENT ';' {
 				$$=noden("function");

@@ -1,0 +1,25 @@
+ program example()
+   type arin is array of 3 integer;
+   type arrin is array of 5 arin;
+
+     function f(x)
+       var x is integer;
+       return integer;
+     is
+       var t is integer;
+     begin
+       x:=1;
+       t := x;
+       return t;
+     end function f;
+
+
+is
+var i is integer;
+var b is integer;
+var ab is arrin;
+var ar is arin;
+begin
+i:=f(1);
+end
+

@@ -77,6 +77,7 @@ bool symbase::isempty(Node *nd)
 }
 void unrolling(const Node* nd,vector<Node*>& v)
 {
+	v.clear();
 	Node *i=nd->first;
 	while(i!=NULL)
 	{
@@ -824,10 +825,18 @@ void symcode::traversal(Node*& nd,ERRMSG& e)
 			e=e+" Expected a function but is "+'\n';
 			return;
 		}
+		if(isempty(zip[0]))
+		{
+			if(ptr->type!=-1)
+			{
+				fprintf(stderr,"ERR:09A\n");
+				e=e+"In "+ptr->name+" return type is not match\n";
+			}
+			return;
+		}
 		if(((Expnode*)zip[1])->valtype!=ptr->type)
 		{
-			//BUG
-			fprintf(stderr,"ERR:09\n");
+			fprintf(stderr,"ERR:09B\n");
 			e=e+"In "+ptr->name+" return type is not match\n";
 			return;
 		}

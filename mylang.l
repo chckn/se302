@@ -120,6 +120,7 @@ boolean {
 	return *yytext;
 }
 \n
+\t
 [ ]
 . {
 		yylval.str=(char*)malloc(strlen(yytext)+1);
