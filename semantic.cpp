@@ -41,16 +41,10 @@ string ptype(int type)
 	return typestr+i->name+szstr;
 
 }
-int arraytype(int t,int step)
+int arraytype(int t)
 {
 	SYMBOL *s=t_vec[t];
-	for(int i=1;i<=step;i++)
-	{
-		t=s->type;
-		s=t_vec[t];
-		//BUG.The step may not enough
-	}
-	return t;
+	return s->type;
 }
 int getype(Node *tp,ERRMSG& e)
 {
@@ -83,6 +77,7 @@ bool symbase::isempty(Node *nd)
 }
 void unrolling(const Node* nd,vector<Node*>& v)
 {
+	v.clear();
 	Node *i=nd->first;
 	while(i!=NULL)
 	{
@@ -138,6 +133,7 @@ void symfunc::print(int n)
 		space(n+2);
 		cout<<m_parameter[i]->name<<"->"<<ptype(m_parameter[i]->type)<<endl;
 	}
+	symbase::print(n+1);	
 }
 SYMBOL::SYMBOL(ACCTYPE _acc):acc(_acc)
 {
@@ -437,7 +433,7 @@ symprog::symprog()
 		{
 			if(pr)
 				cout<<error<<endl;
-			return;
+			exit(0);
 		}
 		code=v[6];
 		if(pr)
@@ -450,7 +446,12 @@ symprog::symprog()
 	
 		}
 		else
-			typecheck(error);
+			if(!typecheck(error))
+			{
+
+				cout<<error<<endl<<"Typecheck failed;\n";
+				exit(0);
+			}
 	}
 void symbase::print(int n)
 {
@@ -527,18 +528,18 @@ Varnode::Varnode(Node *nd,SYMBOL* s):Expnode(nd,NDTYPE::VAR),sym(s)
 void Arrnode::getIndices(vector<Node*>& vec)
 {
 	Node* i=this->last;
-	while(strcmp(i->name,"indices")==0)
+	if(strcmp(i->name,"index")==0)
 	{
 		vec.push_back(i->first);	
 		i=i->last;
 	}	
 }
-Arrnode::Arrnode(Node* nd,SYMBOL* s):Varnode(nd,s)
+Arrnode::Arrnode(Node* nd,SYMBOL* s,int vtype):Varnode(nd,s)
 {
 	type=NDTYPE::ARR;
 	vector<Node*> v;
 	getIndices(v);
-	valtype=arraytype(s->type,v.size());	
+	valtype=arraytype(vtype);	
 }
 Funcnode::Funcnode(Node* nd,symfunc* f):Expnode(nd,NDTYPE::FUNC),sym(f)
 {
@@ -611,9 +612,9 @@ void symcode::setvar(Node*& var,ERRMSG& e)
 			return;
 		}
 	}		
-	if(isname(var->last,"indices"))
+	if(isname(var->last,"index"))
 	{
-		Arrnode *anode=new Arrnode(var,s);
+		Arrnode *anode=new Arrnode(var,s,((Varnode*)v[0])->valtype);
 		var=anode;
 		return;
 
@@ -824,10 +825,18 @@ void symcode::traversal(Node*& nd,ERRMSG& e)
 			e=e+" Expected a function but is "+'\n';
 			return;
 		}
+		if(isempty(zip[0]))
+		{
+			if(ptr->type!=-1)
+			{
+				fprintf(stderr,"ERR:09A\n");
+				e=e+"In "+ptr->name+" return type is not match\n";
+			}
+			return;
+		}
 		if(((Expnode*)zip[1])->valtype!=ptr->type)
 		{
-			//BUG
-			fprintf(stderr,"ERR:09\n");
+			fprintf(stderr,"ERR:09B\n");
 			e=e+"In "+ptr->name+" return type is not match\n";
 			return;
 		}
@@ -861,6 +870,8 @@ void symprog::sem_declar(Node *ptr,string& st)
 symprog* semantic(bool pr)
 {
 	Node *ptr=syntax(0);
+	if(ptr==NULL)
+		exit(0);
 	symprog *prog=new symprog();
 	prog->run(ptr,pr);				
 	return prog;

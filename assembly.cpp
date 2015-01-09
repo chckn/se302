@@ -12,14 +12,17 @@ Value* getArrayPtr(Node* node,IRBuilder<>* builder)
 	/* Begin:Just Follow It */
 	nd->getIndices(vec);
 	idx.push_back(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),0,true));
-	for(int i=0;i<vec.size();i++)
-	{
-		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
-		idx.push_back(((Varnode*)vec[i])->value);
-	}
+//	for(int i=0;i<vec.size();i++)
+//	{
+//		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
+		idx.push_back(((Varnode*)vec[0])->value);
+//	}
+	if(nd->first->type==Expnode::VAR)
+		nd->ptr=builder->CreateGEP(nd->sym->value,idx);
+	else
+		nd->ptr=builder->CreateGEP(((Arrnode*)nd->first)->ptr,idx);
 	/* End: Don't ask why*/
-	fprintf(stderr,"ARR:sym:%x\n",nd->sym);
-	return builder->CreateGEP(nd->sym->value,idx);
+	return nd->ptr;
 }		
 Value* assignmentCG(Expnode* node, CodeContext& context){
 	vector<Node*> zip;                                            
@@ -27,7 +30,7 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 	Value* Val = ((Expnode*)zip[2])->value;
 	Value* Ptr;
 	IRBuilder<>* builder=context.getBuilder();
-	if(zip[0]->type==Expnode::ARR)
+/*	if(zip[0]->type==Expnode::ARR)
 	{
 		//if it is an array
 		Ptr=getArrayPtr(zip[0],builder);
@@ -36,11 +39,12 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 	}
 	else
 	{
+*/	
 		Varnode* nd=((Varnode*)zip[0]);
 		Ptr=nd->value;
 		fprintf(stderr,"Val:%x,ptr:%x",Val,Ptr);
 		return builder->CreateStore(Val, Ptr); 
-	}
+//	}
 }
 Value* varCG(Expnode* node,CodeContext& context)
 {
@@ -56,7 +60,7 @@ Value* varCG(Expnode* node,CodeContext& context)
 		}
 		else//class
 		{
-
+			
 		}
 	}
 	else
@@ -66,6 +70,47 @@ Value* varCG(Expnode* node,CodeContext& context)
 		return new LoadInst(s->value,"_"+s->name,context.currentBlock());		
 
 	}
+}
+Value* fcallCG(Node* node,CodeContext& context)
+{
+	IRBuilder<>* builder=context.getBuilder();
+	Funcnode* fcall=(Funcnode*)node;
+	Expnode* fname=(Expnode*)(fcall->first);
+	vector<Value*> para;//parameter
+	if(symcode::isname(fname->first,"var"))
+	{
+		//class member function
+		//push the class as the first parameter
+	}
+	else
+	{
+
+	}
+		
+	Node* i=fcall->last->first;//nevalues
+	if(symcode::isname(i,"EMPTY"))
+		return	builder->CreateCall(fcall->sym->value,fcall->sym->name);
+	vector<Node*> childs;
+	unrolling(i,childs);
+	while(childs.size()>1)
+	{
+		para.push_back(((Expnode*)childs[0])->value);
+		i=childs[2];
+		unrolling(i,childs);
+	}	
+	para.push_back(((Expnode*)childs[0])->value);
+	fprintf(stderr,"\tpara(%s(%p)):%p\n",i->last->name,i->last->first,((Expnode*)i->last)->value);
+	fprintf(stderr,"fcall:%p",fcall->sym->value);
+	return builder->CreateCall(fcall->sym->value,makeArrayRef(para),fcall->sym->name);
+	
+}
+void returnCG(Node* node,CodeContext& context)
+{
+	IRBuilder<>* builder=context.getBuilder();
+	if(!symcode::isname(node->first,"EMPTY"))
+		builder->CreateRet(((Expnode*)(node->first->next))->value);
+	else
+		builder->CreateRetVoid();
 }
 void Expnode::codeGen(CodeContext& context,int n=0)
 {
@@ -101,6 +146,16 @@ void Expnode::codeGen(CodeContext& context,int n=0)
 		fprintf(stderr," Value:%x\n",this->value);
 		return;
 	}
+	if(symcode::isname(this,"fcall"))
+	{
+		this->value=fcallCG(this,context);
+		return;
+	}
+	if(symcode::isname(this,"return"))
+	{
+		returnCG(this,context);
+		return;
+	}
 
 }
 void CodeContext::initDeclar(symbase* base)
@@ -133,7 +188,12 @@ void CodeContext::initDeclar(symbase* base)
 				this->pushBlock(bblock);
 				initDeclar(f);
 				((Expnode*)f->code)->codeGen(*this);
+				
+				ReturnInst::Create(getGlobalContext(), bblock);
 				this->popBlock();
+				fprintf(stderr,"func(%s):%p",f->name.c_str(),func);
+				f->value=func;
+				local[f->name]=func;
 				continue;
 			}
 			ConstantInt* con=ConstantInt::get(Type::getInt32Ty(getGlobalContext()),s->size,false);

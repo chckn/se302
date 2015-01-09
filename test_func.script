@@ -1,38 +1,25 @@
  program example()
    type arin is array of 3 integer;
    type arrin is array of 5 arin;
-   type a is class
-     // 类中的所有内容都是可以公开访问的
-     // 类的成员变量
-     var v is arin;
-     // 类的函数
+
      function f(x)
        var x is integer;
        return integer;
      is
        var t is integer;
      begin
-       t := x + v;
-       v := x;
+       x:=1;
+       t := x;
        return t;
      end function f;
-   end class;
-   type arr is array of 10 a;
+
+
 is
 var i is integer;
 var b is integer;
 var ab is arrin;
 var ar is arin;
-var A is a;
 begin
-
-
-
-
-//ar[2]:=144;
-
-//ar[1]:=ar[2];
-ab[2][0]:=ar[3];
-//i:=ab[2][1];
+i:=f(1);
 end
 
