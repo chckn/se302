@@ -114,6 +114,7 @@ struct Arrnode:public Varnode
 {
 	Arrnode(Node*,SYMBOL*,int);
 	void getIndices(vector<Node*>& vec);
+	llvm::Value* ptr;
 };
 symprog* semantic(bool ifprint);
 #endif

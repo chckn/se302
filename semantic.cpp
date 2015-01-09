@@ -432,7 +432,7 @@ symprog::symprog()
 		{
 			if(pr)
 				cout<<error<<endl;
-			return;
+			exit(0);
 		}
 		code=v[6];
 		if(pr)
@@ -445,7 +445,12 @@ symprog::symprog()
 	
 		}
 		else
-			typecheck(error);
+			if(!typecheck(error))
+			{
+
+				cout<<error<<endl<<"Typecheck failed;\n";
+				exit(0);
+			}
 	}
 void symbase::print(int n)
 {

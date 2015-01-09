@@ -12,14 +12,17 @@ Value* getArrayPtr(Node* node,IRBuilder<>* builder)
 	/* Begin:Just Follow It */
 	nd->getIndices(vec);
 	idx.push_back(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),0,true));
-	for(int i=0;i<vec.size();i++)
-	{
-		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
-		idx.push_back(((Varnode*)vec[i])->value);
-	}
+//	for(int i=0;i<vec.size();i++)
+//	{
+//		fprintf(stderr,"[%x-%x]",vec[i],((Varnode*)vec[i])->value);
+		idx.push_back(((Varnode*)vec[0])->value);
+//	}
+	if(nd->first->type==Expnode::VAR)
+		nd->ptr=builder->CreateGEP(nd->sym->value,idx);
+	else
+		nd->ptr=builder->CreateGEP(((Arrnode*)nd->first)->ptr,idx);
 	/* End: Don't ask why*/
-	fprintf(stderr,"ARR:sym:%x\n",nd->sym);
-	return builder->CreateGEP(nd->sym->value,idx);
+	return nd->ptr;
 }		
 Value* assignmentCG(Expnode* node, CodeContext& context){
 	vector<Node*> zip;                                            
@@ -27,7 +30,7 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 	Value* Val = ((Expnode*)zip[2])->value;
 	Value* Ptr;
 	IRBuilder<>* builder=context.getBuilder();
-	if(zip[0]->type==Expnode::ARR)
+/*	if(zip[0]->type==Expnode::ARR)
 	{
 		//if it is an array
 		Ptr=getArrayPtr(zip[0],builder);
@@ -36,11 +39,12 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 	}
 	else
 	{
+*/	
 		Varnode* nd=((Varnode*)zip[0]);
 		Ptr=nd->value;
 		fprintf(stderr,"Val:%x,ptr:%x",Val,Ptr);
 		return builder->CreateStore(Val, Ptr); 
-	}
+//	}
 }
 Value* varCG(Expnode* node,CodeContext& context)
 {
@@ -56,7 +60,7 @@ Value* varCG(Expnode* node,CodeContext& context)
 		}
 		else//class
 		{
-
+			
 		}
 	}
 	else
@@ -100,6 +104,9 @@ void Expnode::codeGen(CodeContext& context,int n=0)
 		this->value=assignmentCG(this,context);
 		fprintf(stderr," Value:%x\n",this->value);
 		return;
+	}
+	if(symcode::isname(this,"fcall"))
+	{
 	}
 
 }
