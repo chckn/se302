@@ -30,8 +30,9 @@ class CodeContext {
     std::stack<CodeGenBlock *> blocks;
     vector<Type*> t_type;
 	Function *mainFunction;
-	void initDeclar(symbase*);
+	void initDeclar(symcode*);
 public:
+	Function *printFunc;
     Module *module;
     CodeContext() { module = new Module("main", getGlobalContext()); }
 	StructType* genClass(symclass*);    

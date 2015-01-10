@@ -33,7 +33,7 @@ is
 var ab is arr;
 var b is integer;
 begin
-b:=ab[1].v[3];
-b:=ab[1].i;
+b:=ab[1].f(ab[1].v[3]);
+print b;
 end
 

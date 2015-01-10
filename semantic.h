@@ -68,6 +68,7 @@ struct symcode:public symbase
 {
 	Node* code;
 	SYMBOL* getsym(Node*,ERRMSG&);
+	vector<SYMBOL*> m_parameter;
 	static bool isname(Node*,const char*);
 	bool check(const Expnode*,int vtype,ERRMSG&);
 	void setvar(Node*&,ERRMSG&);
@@ -79,7 +80,6 @@ struct symcode:public symbase
 };
 struct symfunc:public SYMBOL,public symcode
 {
-	vector<SYMBOL*> m_parameter;
 	void parainit(Node*,Node*,ERRMSG&);
 	symfunc(Node *f,symclass* c,ERRMSG& e);
 	void print(int n);

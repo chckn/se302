@@ -137,7 +137,7 @@ void symfunc::print(int n)
 }
 SYMBOL::SYMBOL(ACCTYPE _acc):acc(_acc)
 {
-
+	value=NULL;
 }
 void symfunc::parainit(Node *var,Node* header,ERRMSG& e)
 {

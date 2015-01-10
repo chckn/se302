@@ -1,5 +1,5 @@
 #include "assembly.h"
-
+#include<fstream>
 Value* NUMCG(Expnode* node, CodeContext& context){
 	int v = node->integer;
 	return ConstantInt::get(Type::getInt32Ty(getGlobalContext()),v, true);
@@ -54,6 +54,15 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 		return builder->CreateStore(Val, Ptr); 
 //	}
 }
+Value* getClassVar(Function* func,symclass* cls,string namestr,IRBuilder<>* builder)
+{
+	assert(cls->m_member.find(namestr)!=cls->m_member.end());
+	int pos=cls->m_member[namestr];	
+	Value* ptr=&func->getArgumentList().front();
+	return builder->CreateStructGEP(ptr,pos);
+
+	
+}
 Value* varCG(Node* node,CodeContext& context)
 {
 	Varnode* nd=(Varnode*)node;
@@ -81,7 +90,8 @@ Value* varCG(Node* node,CodeContext& context)
 		if(nd->ptr==NULL)
 		{
 			symclass* cls=context.getfunc()->parent;
-			//getClassVar(cls,s->name);
+			Function* func=context.currentBlock()->getParent();
+			nd->ptr=getClassVar(func,cls,s->name,builder);
 		}		
 		return new LoadInst(nd->ptr,"_"+s->name,context.currentBlock());		
 
@@ -124,6 +134,17 @@ void returnCG(Node* node,CodeContext& context)
 		builder->CreateRet(((Expnode*)(node->first->next))->value);
 	else
 		builder->CreateRetVoid();
+}
+void printCG(Node* node,CodeContext& context)
+{
+	IRBuilder<>* builder=context.getBuilder();
+	Expnode* exp=(Expnode*)node->first;
+	if(exp->valtype==1)//bool
+	{
+		return;
+	}
+	//builder->CreateCall(context.printFunc,ConstantDataArray::getString(getGlobalContext(),"123\n"));
+		
 }
 void Expnode::codeGen(CodeContext& context,int n=0)
 {
@@ -169,6 +190,11 @@ void Expnode::codeGen(CodeContext& context,int n=0)
 		returnCG(this,context);
 		return;
 	}
+	if(symcode::isname(this,"print"))
+	{	
+		printCG(this,context);
+		return;
+	}
 
 }
 void CodeContext::initFunc(symfunc* f,bool par)
@@ -188,17 +214,30 @@ void CodeContext::initFunc(symfunc* f,bool par)
 	else
 		ftype=FunctionType::get(t_type[f->type],makeArrayRef(argtypes),false);
 	Function *func=Function::Create(ftype,GlobalValue::InternalLinkage,f_name,this->module);
+	auto it=func->arg_begin();
+	fprintf(stderr,"func:%s,para:%d,it:%p\n",f->name.c_str(),f->m_parameter.size(),it);
+	if(par)
+		++it;
+	fprintf(stderr,"func:%s,para:%d,it:%p\n",f->name.c_str(),f->m_parameter.size(),it);
+	for(int j=0;j<f->m_parameter.size();j++)
+	{
+		it->setName(f->m_parameter[j]->name);
+		f->m_parameter[j]->value=it;
+		++it;
+	}
 	BasicBlock *bblock=BasicBlock::Create(getGlobalContext(),f_name,func);
 	this->pushBlock(bblock);
 	initDeclar(f);
 	setfunc(f);
 	((Expnode*)f->code)->codeGen(*this);	
-	ReturnInst::Create(getGlobalContext(), bblock);
+	if(f->type==-1)
+		ReturnInst::Create(getGlobalContext(), bblock);
 	this->popBlock();
 	f->value=func;
 }
-void CodeContext::initDeclar(symbase* base)
+void CodeContext::initDeclar(symcode* base)
 {
+	IRBuilder<>* builder=getBuilder();
 	map<string,Value*> local=this->locals();
 	SYMBOL* s=NULL;
 	int size=1;
@@ -207,17 +246,30 @@ void CodeContext::initDeclar(symbase* base)
 		s=it->second;
 		if(local.find(s->name)==local.end())
 		{
-		if(s->acc==SYMBOL::FUNC)
-		{ 
-			//FUNCTION?
-			fprintf(stderr,"Name:%s\n",s->name.c_str());
-			initFunc((symfunc*)s,false);
-			continue;
-		}
-		ConstantInt* con=ConstantInt::get(Type::getInt32Ty(getGlobalContext()),s->size,false);
-		Value* val=new AllocaInst(t_type[s->type],con,s->name,currentBlock());
-		s->value=val;
-		fprintf(stderr,"%s:%p-acc:%d,type:%d,size:%d\n",s->name.c_str(),s,s->acc,s->type,s->size);
+			if(s->acc==SYMBOL::FUNC)
+			{ 
+				//FUNCTION?
+				fprintf(stderr,"Name:%s\n",s->name.c_str());
+				initFunc((symfunc*)s,false);
+				continue;
+			}
+			/*
+			for(int i=0;i<base->m_parameter.size();i++)
+			{
+				if(base->m_parameter[i]==s)//?
+				{
+					s->value=currentBlock()->getParent()->getArgumentList()
+				}
+			}
+			*/
+				ConstantInt* con=ConstantInt::get(Type::getInt32Ty(getGlobalContext()),s->size,false);
+			Value* val=builder->CreateAlloca(t_type[s->type],con,s->name);
+			if(s->value!=NULL)
+			{
+				fprintf(stderr,"%s:%p-acc:%d,type:%d,size:%d,value:%p\n",s->name.c_str(),s,s->acc,s->type,s->size,s->value);
+				builder->CreateStore(s->value,val);
+			}
+			s->value=val;
 			local[s->name]=s->value;
 		}
 	}
@@ -237,7 +289,7 @@ void CodeContext::genClassFunc(symclass *cls)
 			initFunc((symfunc*)s);
 		}	
 	}	
-	
+
 }
 StructType* CodeContext::genClass(symclass* cls)
 {
@@ -281,9 +333,14 @@ void CodeContext::generate(symprog* prog)
 		}
 	}
 
+	vector<Type*> pf_args;
+	pf_args.push_back(Type::getInt8PtrTy(getGlobalContext()));//char*
+	FunctionType *ftype=FunctionType::get(llvm::Type::getInt32Ty(getGlobalContext()),pf_args,true);
+	printFunc=Function::Create(ftype,Function::ExternalLinkage,Twine("printf"),module);
+	printFunc->setCallingConv(CallingConv::C);
 
-	FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), makeArrayRef(argTypes), false);
-	mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", module);
+	ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), makeArrayRef(argTypes), false);
+	mainFunction = Function::Create(ftype, GlobalValue::ExternalLinkage, "main", module);
 	BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "program", mainFunction, 0);
 	pushBlock(bblock);
 	Expnode* newroot=new Expnode(root,(Expnode::NDTYPE)root->type);
@@ -294,15 +351,18 @@ void CodeContext::generate(symprog* prog)
 }
 void assembly()
 {
+	string outstr;
+	raw_string_ostream out(outstr);
 	symprog* prog=semantic(0);
 	//Here comes the code	
 	//prog->code and any (symfunc*)->code is the root of tree(I have change the name)
 	CodeContext context;
 	context.generate(prog);
-	//	ofstream ouf("aout.txt");
-	//	context.module->print(cout);
-	context.module->dump();	
-
+	ofstream ouf("code.ll");
+	context.module->print(out,NULL);
+//	context.module->dump();	
+	cout<<outstr<<endl;	
+	ouf<<outstr<<endl;
 }
 int main()
 {
