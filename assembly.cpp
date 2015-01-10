@@ -219,26 +219,94 @@ Value* IFCG(Expnode* node,CodeContext& context)
         unrolling(node, zip);
         IRBuilder<>* builder=context.getBuilder();
         Value* retval;
-	//retval = builder->CreateCondBr(zip[2], zip[4], zip[6]);
-	return retval;
+
+	
+        /*BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "if", context.mainFunction, 0);
+	pushBlock(bblock);
+        Expnode* newroot=new Expnode(zip[],(Expnode::NDTYPE)root->type);
+        initDeclar(prog);
+        newroot->codeGen(*this);
+        ReturnInst::Create(getGlobalContext(), bblock);
+        popBlock(); */
+  	Value* condV = BEXPRESSIONSCG(((Expnode*)zip[1]), context);
+  	if (condV == 0) { 
+    		fprintf(stderr, "can not generate if statement's Cond's code."); 
+    		return 0; 
+  	}
+  
+  	Function *theFun = builder->GetInsertBlock()->getParent();
+  // Create blocks for the then and else cases.  Insert the 'then' block at the
+  // end of the function.
+  	BasicBlock *trueBB = llvm::BasicBlock::Create(getGlobalContext(), "if.true", theFun);
+  	BasicBlock *endBB = llvm::BasicBlock::Create(getGlobalContext(), "if.end");
+  
+  	builder->CreateCondBr(condV, trueBB, endBB);
+  
+  // Emit true block.
+  	builder->SetInsertPoint(trueBB);
+  	Value *trueV = ((Expnode*)zip[3])->value;
+  	if (trueV == 0) {
+    		fprintf(stderr, "can not generate if TrueStmt code.");
+    		return 0;
+ 	}
+  	builder->CreateBr(endBB);
+  
+  // Emit end block.
+  	theFun->getBasicBlockList().push_back(endBB);
+  	builder->SetInsertPoint(endBB);
+  
+ 	return trueV;
 }
 
 
-
-
-/*Value* ELSECG(Expnode* node,CodeContext& context)
+Value* ELSECG(Expnode* node,CodeContext& context)
 {
         vector<Node*> zip;
         unrolling(node, zip);
         IRBuilder<>* builder=context.getBuilder();
         Value* retval;
-	if (symcode::isname(zip[1]->name, "EMPTY")){
-		//retval = builder->Create
-	}else{
-		retval = zip[2]->value;
-	}
-	return retval;
-}*/
+	 llvm::Value *condV = ((Expnode*)zip[1])->value;
+  if (condV == 0) {
+    //printError("can not generate if-else Cond code.");
+    return 0;
+  }
+
+  llvm::Function *theFun = builder->GetInsertBlock()->getParent();
+  // Create blocks for the then and else cases.  Insert the 'then' block at the
+  // end of the function.
+  llvm::BasicBlock *trueBB = llvm::BasicBlock::Create(getGlobalContext(), "if-else.true", theFun);
+  llvm::BasicBlock *falseBB = llvm::BasicBlock::Create(getGlobalContext(), "if-else.false");
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(getGlobalContext(), "if-else.merge");
+
+  builder->CreateCondBr(condV, trueBB, falseBB);
+
+  // Emit true block.
+  builder->SetInsertPoint(trueBB);
+
+  llvm::Value *trueV = ((Expnode*)zip[3])->value;
+  if (trueV == 0) {
+    //printError("can not generate if-else TrueStmt code.");
+    return 0;
+  }
+  builder->CreateBr(mergeBB);
+
+  // Emit else(false) block.
+  theFun->getBasicBlockList().push_back(falseBB);
+  builder->SetInsertPoint(falseBB);
+  
+  llvm::Value *falseV = ((Expnode*)zip[5])->value;
+  if (falseV == 0) {
+    //printError("can not generate if-else FalseStmt code.");
+    return 0;
+  }
+  builder->CreateBr(mergeBB);
+	// Emit merge block.
+  theFun->getBasicBlockList().push_back(mergeBB);
+  builder->SetInsertPoint(mergeBB);
+
+  return trueV;
+
+}
 /*Value* ELIFCG(Expnode* node,CodeContext& context)
 {
         vector<Node*> zip;
@@ -261,12 +329,65 @@ Value* ELIFSCG(Expnode* node,CodeContext& context)
 	}
 }*/
 
+Value* BLOCKCG(Expnode* node,CodeContext& context)
+{
+        
+}
+
 Value* WHILECG(Expnode* node,CodeContext& context)
 {
         vector<Node*> zip;
         unrolling(node, zip);
         IRBuilder<>* builder=context.getBuilder();
         Value* retval;
+	//===----------------------------- WhileStatementAST ----------------------===//
+  	//context.TheEnvStack.push();
+  
+ 	llvm::Function *theFun = builder->GetInsertBlock()->getParent();
+  
+  	// Set the IterateStmtStack.
+  	IterateBlocks *iterateBlks = new IterateBlocks();
+  	context.IterateStmtStack.push(iterateBlks);
+  
+  	// Create blocks for while-statement cond, body and end.
+  	iterateBlks->CondBB = llvm::BasicBlock::Create(getGlobalContext(), "while.cond", theFun);
+  	iterateBlks->BodyBB = llvm::BasicBlock::Create(getGlobalContext(), "while.body");
+  	iterateBlks->EndBB = llvm::BasicBlock::Create(getGlobalContext(), "while.end");
+  	iterateBlks->BodyEndBB = iterateBlks->CondBB;
+  
+  	builder->CreateBr(iterateBlks->CondBB);
+  
+  // Emit cond block.
+  	builder->SetInsertPoint(iterateBlks->CondBB);
+  	llvm::Value *condV = ((Expnode*)zip[1])->value;
+  	if ( condV == 0) { 
+    		//printError("can not generate while-Cond expression code."); 
+    		return 0; 
+  	}
+  	builder->CreateCondBr(condV, iterateBlks->BodyBB, iterateBlks->EndBB);
+  
+ 	 // Emit boy block.
+  	theFun->getBasicBlockList().push_back(iterateBlks->BodyBB);
+  	builder->SetInsertPoint(iterateBlks->BodyBB);
+  
+  	llvm::Value *bodyV = ((Expnode*)zip[3])->value;
+  	if (bodyV == 0) {
+    		//printError("can not generate while-body code.");
+    		return 0;
+  	}
+  	builder->CreateBr(iterateBlks->CondBB);
+    
+  // Do a pop on the IterateStmtStack.
+  	context.IterateStmtStack.pop();
+  
+  // Pop the body for statement's environment
+  	//context.TheEnvStack.pop();
+  
+  // Emit end block.
+  	theFun->getBasicBlockList().push_back(iterateBlks->EndBB);
+  	builder->SetInsertPoint(iterateBlks->EndBB);
+  
+  	return bodyV;
 }	
 
 Value* varCG(Expnode* node,CodeContext& context)

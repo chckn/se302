@@ -18,6 +18,17 @@ Value* assignmentCG(Expnode *node,CodeContext& context);
 extern vector<SYMBOL*> t_vec;
 extern map<string,int> t_tbl;
 
+
+struct IterateBlocks {
+  llvm::BasicBlock *CondBB;
+  llvm::BasicBlock *BodyBB;
+  llvm::BasicBlock *BodyEndBB;
+  llvm::BasicBlock *EndBB;
+  IterateBlocks(llvm::BasicBlock *condBB = 0, llvm::BasicBlock *bodyBB = 0, 
+                llvm::BasicBlock *bodyEndBB = 0, llvm::BasicBlock *endBB = 0){}
+};
+
+
 class CodeGenBlock {
 public:
     BasicBlock *block;
@@ -31,7 +42,14 @@ class CodeContext {
     vector<Type*> t_type;
 	Function *mainFunction;
 	void initDeclar(symbase*);
+   //std::map<std::string, llvm::AllocaInst*> Variables;
+  //EnvStack<llvm::AllocaInst*> TheEnvStack;
+  
+  // The iteration statement stack.
+  //std::stack<IterateBlocks*> IterateStmtStack;
 public:
+	std::stack<IterateBlocks*> IterateStmtStack;
+    //EnvStack<llvm::AllocaInst*> TheEnvStack;
     Module *module;
     CodeContext() { module = new Module("main", getGlobalContext()); }
     
