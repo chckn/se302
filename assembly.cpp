@@ -35,17 +35,232 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 		//if it is an array
 		Ptr=getArrayPtr(zip[0],builder);
 		return builder->CreateStore(Val,Ptr);
-
 	}
 	else
 	{
 */	
 		Varnode* nd=((Varnode*)zip[0]);
 		Ptr=nd->value;
-		fprintf(stderr,"Val:%x,ptr:%x",Val,Ptr);
+		fprintf(stderr,"Val:%p,ptr:%p",Val,Ptr);
 		return builder->CreateStore(Val, Ptr); 
 //	}
 }
+
+Value* EXPCG(Expnode* node,CodeContext& context){
+	
+	return ((Expnode*)(node->first))->value;
+}
+
+Value* PRIMARYCG(Expnode* node,CodeContext& context){
+	vector<Node*> zip;
+        unrolling(node, zip);
+	IRBuilder<>* builder=context.getBuilder();
+	Value* retval;
+	bool flag = false;
+	if(strcmp(zip[0]->name,"NUM") == 0){
+		retval = ((Expnode*)zip[0])->value;
+		flag = true;
+	}
+	if(strcmp(zip[0]->name,"(") == 0){
+		retval = ((Expnode*)zip[1])->value;
+		flag = true;
+        }
+	if(strcmp(zip[0]->name,"var") == 0){
+		retval =((Expnode*)zip[0])->value;
+		flag = true;
+        }
+	if(strcmp(zip[0]->name,"fcall") == 0){
+		retval = ((Expnode*)zip[0])->value;
+		flag = true;
+        }
+	if (!flag){
+		// error!
+	}
+	return retval;
+
+}
+
+Value* TERMCG(Expnode* node,CodeContext& context){
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+	Value* retval;
+	Instruction::BinaryOps instr;
+	if(strcmp(zip[0]->name,"primary") == 0){
+		retval = ((Expnode*)zip[0])->value;
+	}
+        if(strcmp(zip[0]->name,"term") == 0){
+    		Instruction::BinaryOps instr;
+		if (strcmp(zip[1]->name,"OP") != 0){
+			//error!
+		}
+		if (strcmp(zip[1]->str,"+") == 0){
+			instr = Instruction::Add; 
+			goto math;
+		}
+		if (strcmp(zip[1]->str,"-") == 0){
+                	instr = Instruction::Sub; 
+			goto math;        
+                }
+		if (strcmp(zip[1]->str,"*") == 0){
+                        instr = Instruction::Mul; 
+			goto math;
+                }
+		if (strcmp(zip[1]->str,"/") == 0){
+                	instr = Instruction::SDiv; 
+			goto math;        
+        	}
+	}
+math:
+    	return BinaryOperator::Create(instr, ((Expnode*)zip[0])->value,
+        	((Expnode*)zip[2])->value, "", context.currentBlock()); // not use builder??
+
+
+}
+
+Value* FINALCG(Expnode* node,CodeContext& context){
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+	if (symcode::isname(zip[0], "term")){
+		retval = ((Expnode*)zip[0])->value;
+	}
+	if (symcode::isname(zip[0], "final")){
+		if (strcmp(zip[1]->str,"+") == 0){
+			retval = builder->CreateNSWAdd(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+		}else if (strcmp(zip[1]->str,"-") == 0){
+			retval = builder->CreateNSWSub(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+                } else {
+			//error
+		}
+	} else{
+		//error
+	}
+	return retval;
+
+}
+
+Value* BPRIMARYCG(Expnode* node,CodeContext& context)
+{
+        Value* Ptr;
+	vector<Node*> zip;
+	unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+	Value* retval;
+        if(strcmp(zip[0]->name,"bexpression") == 0){
+		retval = ((Expnode*)zip[0])->value;
+	}else if (strcmp(zip[1]->name,"coperator") == 0){
+		if (symcode::isname(zip[1]->first, "==")){
+			retval = builder->CreateICmpEQ(((Expnode*)zip[0])->value,((Expnode*)zip[2])->value);
+		}
+		if (symcode::isname(zip[1]->first, "less")){
+			retval = builder->CreateICmpSLT(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+                }
+		if (symcode::isname(zip[1]->first, "large")){
+			retval = builder->CreateICmpSGT(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+                }
+		if (symcode::isname(zip[1]->first, "less_equal")){
+			retval = builder->CreateICmpSLE(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+                }
+		if (symcode::isname(zip[1]->first, "large_equal")){
+			retval = builder->CreateICmpSGE(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+                }
+
+	}
+	return retval;
+}
+
+Value* BTERMCG(Expnode* node,CodeContext& context)
+{
+        Value* Ptr;
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+	if (zip.size() == 1){
+		retval = ((Expnode*)zip[0])->value;
+	}else if (zip.size() == 3){
+		retval = builder->CreateAnd(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+	} else{
+		//error
+	}
+	return retval;
+}
+
+Value* BEXPRESSIONSCG(Expnode* node,CodeContext& context)
+{
+        Value* Ptr;
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+        if (zip.size() == 1){
+                retval = ((Expnode*)zip[0])->value;
+        }else if (zip.size() == 3){
+                retval =builder->CreateOr(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+        } else{
+                //error
+        }
+        return retval;
+}
+
+Value* IFCG(Expnode* node,CodeContext& context)
+{
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+	//retval = builder->CreateCondBr(zip[2], zip[4], zip[6]);
+	return retval;
+}
+
+
+
+
+/*Value* ELSECG(Expnode* node,CodeContext& context)
+{
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+	if (symcode::isname(zip[1]->name, "EMPTY")){
+		//retval = builder->Create
+	}else{
+		retval = zip[2]->value;
+	}
+	return retval;
+}*/
+/*Value* ELIFCG(Expnode* node,CodeContext& context)
+{
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+	retval = builder->CreateCondBr(zip[2], zip[4],<<<<<< blank >>>>>>>);
+}
+
+Value* ELIFSCG(Expnode* node,CodeContext& context)
+{
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+	if (symcode::isname(zip[1], "EMPTY")){
+		//retval = blank;
+	} else{
+		retval = 
+	}
+}*/
+
+Value* WHILECG(Expnode* node,CodeContext& context)
+{
+        vector<Node*> zip;
+        unrolling(node, zip);
+        IRBuilder<>* builder=context.getBuilder();
+        Value* retval;
+}	
+
 Value* varCG(Expnode* node,CodeContext& context)
 {
 	Value* Ptr;
@@ -156,6 +371,81 @@ void Expnode::codeGen(CodeContext& context,int n=0)
 		returnCG(this,context);
 		return;
 	}
+	if(symcode::isname(this,"primary"))
+        {
+                this->value = PRIMARYCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"term"))
+        {
+                this->value = TERMCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"final"))
+        {
+                this->value = FINALCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"bprimary"))
+        {
+                this->value = BPRIMARYCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"bterm"))
+        {
+                this->value = BTERMCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"bexpressions"))
+        {
+                this->value = BEXPRESSIONSCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"if"))
+        {
+                this->value = IFCG(this,context);
+                return;
+        }
+	/*if(symcode::isname(this,"else"))
+        {
+                this->value = ELSECG(this,context);
+                return;
+        }*/
+	if(symcode::isname(this,"while"))
+        {
+                this->value = WHILECG(this,context);
+                return;
+        }
+	/*if(symcode::isname(this,"repeat"))
+        {
+                this->value = REPEATCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"block"))
+        {
+                this->value = BLOCKCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"sentence"))
+        {
+                this->value = SENTENCECG(this,context);
+                return;
+        }*/
+
+	/*if(symcode::isname(this,"elif"))
+        {
+                this->value = ELIFCG(this,context);
+                return;
+        }
+	if(symcode::isname(this,"elifs"))
+        {
+                this->value = ELIFSCG(this,context);
+                return;
+        }*/
+
+
+
+
 
 }
 void CodeContext::initDeclar(symbase* base)
