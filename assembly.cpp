@@ -50,9 +50,10 @@ Value* assignmentCG(Expnode* node, CodeContext& context){
 */	
 		Varnode* nd=((Varnode*)zip[0]);
 		Ptr=nd->ptr;
-		fprintf(stderr,"Val:%x,ptr:%x",Val,Ptr);
+		fprintf(stderr,"Val:%p,ptr:%p",Val,Ptr);
 		return builder->CreateStore(Val, Ptr); 
 //	}
+
 }
 Value* getClassVar(Function* func,symclass* cls,string namestr,IRBuilder<>* builder)
 {
