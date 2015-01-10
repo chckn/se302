@@ -66,7 +66,7 @@ Value* PRIMARYCG(Expnode* node,CodeContext& context){
 		flag = true;
         }
 	if(strcmp(zip[0]->name,"var") == 0){
-		retval =((Expnode*)zip[0])->value;
+		retval =((Varnode*)zip[0])->value;
 		flag = true;
         }
 	if(strcmp(zip[0]->name,"fcall") == 0){
@@ -86,35 +86,43 @@ Value* TERMCG(Expnode* node,CodeContext& context){
         IRBuilder<>* builder=context.getBuilder();
 	Value* retval;
 	Instruction::BinaryOps instr;
-	if(strcmp(zip[0]->name,"primary") == 0){
+	//if(strcmp(zip[0]->name,"primary") == 0){
+	if (zip.size() == 1){
 		retval = ((Expnode*)zip[0])->value;
 	}
-        if(strcmp(zip[0]->name,"term") == 0){
+        //if(strcmp(zip[0]->name,"term") == 0){
+	if (zip.size() == 3){
     		Instruction::BinaryOps instr;
 		if (strcmp(zip[1]->name,"OP") != 0){
 			//error!
+			
 		}
 		if (strcmp(zip[1]->str,"+") == 0){
 			instr = Instruction::Add; 
-			goto math;
+			//goto math;
+			retval = builder->CreateAdd(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
 		}
 		if (strcmp(zip[1]->str,"-") == 0){
                 	instr = Instruction::Sub; 
-			goto math;        
+			//goto math;        
+		        retval = builder->CreateSub(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+
                 }
 		if (strcmp(zip[1]->str,"*") == 0){
                         instr = Instruction::Mul; 
-			goto math;
+			//goto math;
+			retval = builder->CreateMul(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
                 }
 		if (strcmp(zip[1]->str,"/") == 0){
                 	instr = Instruction::SDiv; 
-			goto math;        
+			//goto math;        
+			retval = builder->CreateSDiv(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
         	}
 	}
 math:
-    	return BinaryOperator::Create(instr, ((Expnode*)zip[0])->value,
-        	((Expnode*)zip[2])->value, "", context.currentBlock()); // not use builder??
-
+    	/*return BinaryOperator::Create(instr, ((Expnode*)zip[0])->value,
+        	((Expnode*)zip[2])->value, "", context.currentBlock()); */// not use builder??
+	return retval;
 
 }
 
@@ -123,19 +131,18 @@ Value* FINALCG(Expnode* node,CodeContext& context){
         unrolling(node, zip);
         IRBuilder<>* builder=context.getBuilder();
         Value* retval;
-	if (symcode::isname(zip[0], "term")){
+	//if (symcode::isname(zip[0], "term")){
+	if (zip.size() == 1){
 		retval = ((Expnode*)zip[0])->value;
 	}
-	if (symcode::isname(zip[0], "final")){
+	//if (symcode::isname(zip[0], "final")){
+	if (zip.size() == 3){
 		if (strcmp(zip[1]->str,"+") == 0){
-			retval = builder->CreateNSWAdd(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
-		}else if (strcmp(zip[1]->str,"-") == 0){
-			retval = builder->CreateNSWSub(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
-                } else {
-			//error
+			retval = builder->CreateAdd(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
 		}
-	} else{
-		//error
+		if (strcmp(zip[1]->str,"-") == 0){
+			retval = builder->CreateSub(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+                }
 	}
 	return retval;
 
@@ -148,9 +155,12 @@ Value* BPRIMARYCG(Expnode* node,CodeContext& context)
 	unrolling(node, zip);
         IRBuilder<>* builder=context.getBuilder();
 	Value* retval;
-        if(strcmp(zip[0]->name,"bexpression") == 0){
+        //if(strcmp(zip[0]->name,"bexpression") == 0){
+	if (zip.size() == 1){
 		retval = ((Expnode*)zip[0])->value;
-	}else if (strcmp(zip[1]->name,"coperator") == 0){
+	}
+	//if (strcmp(zip[1]->name,"coperator") == 0){
+	if (zip.size() == 3){
 		if (symcode::isname(zip[1]->first, "==")){
 			retval = builder->CreateICmpEQ(((Expnode*)zip[0])->value,((Expnode*)zip[2])->value);
 		}
@@ -180,10 +190,9 @@ Value* BTERMCG(Expnode* node,CodeContext& context)
         Value* retval;
 	if (zip.size() == 1){
 		retval = ((Expnode*)zip[0])->value;
-	}else if (zip.size() == 3){
+	}
+	if (zip.size() == 3){
 		retval = builder->CreateAnd(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
-	} else{
-		//error
 	}
 	return retval;
 }
@@ -197,11 +206,10 @@ Value* BEXPRESSIONSCG(Expnode* node,CodeContext& context)
         Value* retval;
         if (zip.size() == 1){
                 retval = ((Expnode*)zip[0])->value;
-        }else if (zip.size() == 3){
-                retval =builder->CreateOr(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
-        } else{
-                //error
         }
+	if (zip.size() == 3){
+                retval =builder->CreateOr(((Expnode*)zip[0])->value, ((Expnode*)zip[2])->value);
+        } 
         return retval;
 }
 
